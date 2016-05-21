@@ -4,7 +4,6 @@
 import videojs from 'video.js';
 
 const Component = videojs.getComponent('Component');
-const ControlBar = videojs.getComponent('ControlBar');
 const Button = videojs.getComponent('Button');
 
 /**
@@ -16,11 +15,9 @@ const Button = videojs.getComponent('Button');
  * @class ChromeCastButton
  */
 class ChromeCastButton extends Button {
-
     constructor (player, options) {
         super(player, options);
         this.hide();
-        this.initializeApi();
         player.chromecast = this;
     }
 
@@ -29,34 +26,18 @@ class ChromeCastButton extends Button {
      *
      * @method initializeApi
      */
-
     initializeApi () {
         let apiConfig;
         let appId;
         let sessionRequest;
 
-        if (!videojs.browser.IS_CHROME || videojs.browser.IS_EDGE) {
-            return;
-        }
-        if (!chrome.cast || !chrome.cast.isAvailable) {
-            videojs.log('Cast APIs not available');
-            if (this.tryingReconnect < 10) {
-                this.setTimeout(this.initializeApi, 1000);
-                ++this.tryingReconnect;
-            }
-            videojs.log('Cast APIs not available. Max reconnect attempt');
-            return;
-        }
-
-        videojs.log('Cast APIs are available');
         appId = this.options_.appId || chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID;
         sessionRequest = new chrome.cast.SessionRequest(appId);
-        apiConfig = new chrome.cast.ApiConfig(sessionRequest, ::this.sessionJoinedListener, ::this.receiverListener);
+        apiConfig = new chrome.cast.ApiConfig(sessionRequest, ::this.sessionJoinedListener, ::this.receiverListener, chrome.cast.AutoJoinPolicy.TAB_AND_ORIGIN_SCOPED, chrome.cast.DefaultActionPolicy.CAST_THIS_TAB);
         return chrome.cast.initialize(apiConfig, ::this.onInitSuccess, ::this.castError);
     }
 
     castError (castError) {
-
         let error = {
             code: castError.code,
             message: castError.description
@@ -92,7 +73,6 @@ class ChromeCastButton extends Button {
             this.apiSession = session;
             this.onMediaDiscovered(session.media[0]);
         }
-        return console.log('Session joined');
     }
 
     receiverListener (availability) {
@@ -102,7 +82,6 @@ class ChromeCastButton extends Button {
     }
 
     doLaunch () {
-        videojs.log('Cast video: ' + (this.player_.cache_.src));
         if (this.apiInitialized) {
             return chrome.cast.requestSession(::this.onSessionSuccess, ::this.castError);
         } else {
@@ -118,12 +97,9 @@ class ChromeCastButton extends Button {
         let ref;
         let value;
 
-
         this.apiSession = session;
         const source = this.player_.cache_.src;
         const type = this.player_.currentType();
-
-        videojs.log('Session initialized: ' + session.sessionId + ' source : ' + source + ' type : ' + type);
 
         mediaInfo = new chrome.cast.media.MediaInfo(source, type);
         mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
@@ -144,50 +120,31 @@ class ChromeCastButton extends Button {
 
         // Load/Add caption tracks
         let plTracks = this.player().textTracks();
-        const remotePlTracks = this.player().remoteTextTrackEls();
         let tracks = [];
         let i = 0;
-        let remotePlTrack;
         let plTrack;
         let trackId = 0;
         let track;
         if (plTracks) {
             for (i = 0; i < plTracks.length; i++) {
                 plTrack = plTracks.tracks_[i];
-                remotePlTrack = remotePlTracks && remotePlTracks.trackElements_ && remotePlTracks.trackElements_[i];
                 trackId++;
                 track = new chrome.cast.media.Track(trackId, chrome.cast.media.TrackType.TEXT);
-                track.trackContentId = remotePlTrack ? remotePlTrack.src : 'caption_' + plTrack.language;
-                track.subtype = chrome.cast.media.TextTrackType.CAPTIONS;
+                track.trackContentId = plTrack.src.indexOf('//') >= 0 ? plTrack.src : location.origin + plTrack.src;
+                track.trackContentType = 'text/vtt';
+                track.subtype = chrome.cast.media.TextTrackType.SUBTITLES;
                 track.name = plTrack.label;
                 track.language = plTrack.language;
                 track.customData = null;
                 tracks.push(track);
             }
             mediaInfo.textTrackStyle = new chrome.cast.media.TextTrackStyle();
-            mediaInfo.textTrackStyle.foregroundColor = '#FFFFFF';
-            mediaInfo.textTrackStyle.backgroundColor = '#00000060';
-            mediaInfo.textTrackStyle.edgeType = chrome.cast.media.TextTrackEdgeType.DROP_SHADOW;
-            mediaInfo.textTrackStyle.windowType = chrome.cast.media.TextTrackWindowType.ROUNDED_CORNERS;
-        }
-        // Load/Add audio tracks
-
-        try {
-            plTracks = this.player().audioTracks();
-            if (plTracks) {
-                for (i = 0; i < plTracks.length; i++) {
-                    plTrack = plTracks.tracks_[i];
-                    trackId++;
-                    track = new chrome.cast.media.Track(trackId, chrome.cast.media.TrackType.AUDIO);
-                    track.subtype = null;
-                    track.name = plTrack.label;
-                    track.language = plTrack.language;
-                    track.customData = null;
-                    tracks.push(track);
-                }
-            }
-        } catch (e) {
-            videojs.log('get player audioTracks fail' + e);
+            mediaInfo.textTrackStyle.fontScale = 1.15;
+            mediaInfo.textTrackStyle.fontFamily = 'Arial';
+            mediaInfo.textTrackStyle.foregroundColor = '#FFCC66FF';
+            mediaInfo.textTrackStyle.backgroundColor = '#000000СС';
+            mediaInfo.textTrackStyle.edgeType = chrome.cast.media.TextTrackEdgeType.NONE;
+            mediaInfo.textTrackStyle.windowType = chrome.cast.media.TextTrackWindowType.NONE;
         }
 
         if (tracks.length) {
@@ -271,14 +228,8 @@ class ChromeCastButton extends Button {
     }
 }
 
-ChromeCastButton.prototype.tryingReconnect = 0;
-
 ChromeCastButton.prototype.inactivityTimeout = 2000;
-
 ChromeCastButton.prototype.controlText_ = 'Chromecast';
-
-//Replace videojs CaptionButton child with this one
-ControlBar.prototype.options_.children.splice(ControlBar.prototype.options_.children.length - 1, 0, 'chromeCastButton');
 
 Component.registerComponent('ChromeCastButton', ChromeCastButton);
 export default ChromeCastButton;

@@ -22,7 +22,6 @@ var _videoJs = require('video.js');
 var _videoJs2 = _interopRequireDefault(_videoJs);
 
 var Component = _videoJs2['default'].getComponent('Component');
-var ControlBar = _videoJs2['default'].getComponent('ControlBar');
 var Button = _videoJs2['default'].getComponent('Button');
 
 /**
@@ -42,7 +41,6 @@ var ChromeCastButton = (function (_Button) {
 
         _get(Object.getPrototypeOf(ChromeCastButton.prototype), 'constructor', this).call(this, player, options);
         this.hide();
-        this.initializeApi();
         player.chromecast = this;
     }
 
@@ -59,29 +57,14 @@ var ChromeCastButton = (function (_Button) {
             var appId = undefined;
             var sessionRequest = undefined;
 
-            if (!_videoJs2['default'].browser.IS_CHROME || _videoJs2['default'].browser.IS_EDGE) {
-                return;
-            }
-            if (!chrome.cast || !chrome.cast.isAvailable) {
-                _videoJs2['default'].log('Cast APIs not available');
-                if (this.tryingReconnect < 10) {
-                    this.setTimeout(this.initializeApi, 1000);
-                    ++this.tryingReconnect;
-                }
-                _videoJs2['default'].log('Cast APIs not available. Max reconnect attempt');
-                return;
-            }
-
-            _videoJs2['default'].log('Cast APIs are available');
             appId = this.options_.appId || chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID;
             sessionRequest = new chrome.cast.SessionRequest(appId);
-            apiConfig = new chrome.cast.ApiConfig(sessionRequest, this.sessionJoinedListener.bind(this), this.receiverListener.bind(this));
+            apiConfig = new chrome.cast.ApiConfig(sessionRequest, this.sessionJoinedListener.bind(this), this.receiverListener.bind(this), chrome.cast.AutoJoinPolicy.TAB_AND_ORIGIN_SCOPED, chrome.cast.DefaultActionPolicy.CAST_THIS_TAB);
             return chrome.cast.initialize(apiConfig, this.onInitSuccess.bind(this), this.castError.bind(this));
         }
     }, {
         key: 'castError',
         value: function castError(_castError) {
-
             var error = {
                 code: _castError.code,
                 message: _castError.description
@@ -119,7 +102,6 @@ var ChromeCastButton = (function (_Button) {
                 this.apiSession = session;
                 this.onMediaDiscovered(session.media[0]);
             }
-            return console.log('Session joined');
         }
     }, {
         key: 'receiverListener',
@@ -131,7 +113,6 @@ var ChromeCastButton = (function (_Button) {
     }, {
         key: 'doLaunch',
         value: function doLaunch() {
-            _videoJs2['default'].log('Cast video: ' + this.player_.cache_.src);
             if (this.apiInitialized) {
                 return chrome.cast.requestSession(this.onSessionSuccess.bind(this), this.castError.bind(this));
             } else {
@@ -152,8 +133,6 @@ var ChromeCastButton = (function (_Button) {
             var source = this.player_.cache_.src;
             var type = this.player_.currentType();
 
-            _videoJs2['default'].log('Session initialized: ' + session.sessionId + ' source : ' + source + ' type : ' + type);
-
             mediaInfo = new chrome.cast.media.MediaInfo(source, type);
             mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
             if (this.options_.metadata) {
@@ -172,50 +151,31 @@ var ChromeCastButton = (function (_Button) {
 
             // Load/Add caption tracks
             var plTracks = this.player().textTracks();
-            var remotePlTracks = this.player().remoteTextTrackEls();
             var tracks = [];
             var i = 0;
-            var remotePlTrack = undefined;
             var plTrack = undefined;
             var trackId = 0;
             var track = undefined;
             if (plTracks) {
                 for (i = 0; i < plTracks.length; i++) {
                     plTrack = plTracks.tracks_[i];
-                    remotePlTrack = remotePlTracks && remotePlTracks.trackElements_ && remotePlTracks.trackElements_[i];
                     trackId++;
                     track = new chrome.cast.media.Track(trackId, chrome.cast.media.TrackType.TEXT);
-                    track.trackContentId = remotePlTrack ? remotePlTrack.src : 'caption_' + plTrack.language;
-                    track.subtype = chrome.cast.media.TextTrackType.CAPTIONS;
+                    track.trackContentId = plTrack.src.indexOf('//') >= 0 ? plTrack.src : location.origin + plTrack.src;
+                    track.trackContentType = 'text/vtt';
+                    track.subtype = chrome.cast.media.TextTrackType.SUBTITLES;
                     track.name = plTrack.label;
                     track.language = plTrack.language;
                     track.customData = null;
                     tracks.push(track);
                 }
                 mediaInfo.textTrackStyle = new chrome.cast.media.TextTrackStyle();
-                mediaInfo.textTrackStyle.foregroundColor = '#FFFFFF';
-                mediaInfo.textTrackStyle.backgroundColor = '#00000060';
-                mediaInfo.textTrackStyle.edgeType = chrome.cast.media.TextTrackEdgeType.DROP_SHADOW;
-                mediaInfo.textTrackStyle.windowType = chrome.cast.media.TextTrackWindowType.ROUNDED_CORNERS;
-            }
-            // Load/Add audio tracks
-
-            try {
-                plTracks = this.player().audioTracks();
-                if (plTracks) {
-                    for (i = 0; i < plTracks.length; i++) {
-                        plTrack = plTracks.tracks_[i];
-                        trackId++;
-                        track = new chrome.cast.media.Track(trackId, chrome.cast.media.TrackType.AUDIO);
-                        track.subtype = null;
-                        track.name = plTrack.label;
-                        track.language = plTrack.language;
-                        track.customData = null;
-                        tracks.push(track);
-                    }
-                }
-            } catch (e) {
-                _videoJs2['default'].log('get player audioTracks fail' + e);
+                mediaInfo.textTrackStyle.fontScale = 1.15;
+                mediaInfo.textTrackStyle.fontFamily = 'Arial';
+                mediaInfo.textTrackStyle.foregroundColor = '#FFCC66FF';
+                mediaInfo.textTrackStyle.backgroundColor = '#000000СС';
+                mediaInfo.textTrackStyle.edgeType = chrome.cast.media.TextTrackEdgeType.NONE;
+                mediaInfo.textTrackStyle.windowType = chrome.cast.media.TextTrackWindowType.NONE;
             }
 
             if (tracks.length) {
@@ -310,14 +270,8 @@ var ChromeCastButton = (function (_Button) {
     return ChromeCastButton;
 })(Button);
 
-ChromeCastButton.prototype.tryingReconnect = 0;
-
 ChromeCastButton.prototype.inactivityTimeout = 2000;
-
 ChromeCastButton.prototype.controlText_ = 'Chromecast';
-
-//Replace videojs CaptionButton child with this one
-ControlBar.prototype.options_.children.splice(ControlBar.prototype.options_.children.length - 1, 0, 'chromeCastButton');
 
 Component.registerComponent('ChromeCastButton', ChromeCastButton);
 exports['default'] = ChromeCastButton;

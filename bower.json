@@ -1,7 +1,7 @@
 {
   "name": "videojs-chromecast",
   "version": "2.0.0",
-  "author": "benjipott",
+  "author": "https://github.com/RavWar/video.js-chromecast",
   "license": "Apache-2.0",
   "main": [
     "dist/videojs-chromecast.min.js"

@@ -1,52 +1,32 @@
-/**
- * ! videojs-chromecast - v1.0.0 - 2016-02-15
- * Copyright (c) 2015 benjipott
- * Licensed under the Apache-2.0 license.
- * @file videojs-chromecast.js
- **/
 import videojs from 'video.js';
 import chromecastButton from './component/control-bar/chromecast-button';
 import chromecastTech from './tech/chromecast';
 
-let Component = videojs.getComponent('Component');
+const plugin = function (options) {
+  if (typeof chrome == 'undefined') return;
 
-/**
- * Initialize the plugin.
- * @param options (optional) {object} configuration for the plugin
- */
-class Chromecast extends Component {
-  constructor(player, options) {
-    super(player, options);
-  }
-}
+  var retries = 0,
+      player  = this;
 
+  player.on('loadeddata', function() {
+    var button = player.controlBar.childNameIndex_.chromeCastButton;
 
-Chromecast.prototype.options_ = {};
+    if (!button) {
+      button = player.controlBar.addChild('chromeCastButton', options);
+      player.controlBar.el().insertBefore(button.el(), player.controlBar.fullscreenToggle.el());
+    }
 
+    var interval = setInterval(function () {
+      if (chrome.cast && chrome.cast.isAvailable) {
+        button.initializeApi();
+        clearInterval(interval);
+      }
 
-// register the plugin
-videojs.options.children.chromecast = {};
+      if (++retries > 5) {
+        clearInterval(interval);
+      }
+    }, 1000);
+  });
+};
 
-
-videojs.addLanguage('en', {
-  'CASTING TO': 'WIEDERGABE AUF'
-});
-
-videojs.addLanguage('de', {
-  'CASTING TO': 'WIEDERGABE AUF'
-});
-
-videojs.addLanguage('it', {
-  'CASTING TO': 'PLAYBACK SU'
-});
-
-videojs.addLanguage('fr', {
-  'CASTING TO': 'CAST EN COURS SUR'
-});
-
-const USER_AGENT = window.navigator.userAgent;
-
-videojs.browser.IS_EDGE = (/Edge/i).test(USER_AGENT);
-
-Component.registerComponent('Chromecast', Chromecast);
-export default Chromecast;
+videojs.plugin('chromecast', plugin);

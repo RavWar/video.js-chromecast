@@ -30,41 +30,12 @@ class Chromecast extends Tech {
             let changeHandler = ::this.handleTextTracksChange;
 
             tracks.addEventListener('change', changeHandler);
+            this.one('ready', changeHandler);
             this.on('dispose', function () {
                 tracks.removeEventListener('change', changeHandler);
             });
 
             this.handleTextTracksChange();
-        }
-
-        try {
-            tracks = this.audioTracks();
-            if (tracks) {
-                let changeHandler = ::this.handleAudioTracksChange;
-
-                tracks.addEventListener('change', changeHandler);
-                this.on('dispose', function () {
-                    tracks.removeEventListener('change', changeHandler);
-                });
-
-            }
-        } catch (e) {
-            videojs.log('get player audioTracks fail' + e);
-        }
-
-        try {
-            tracks = this.videoTracks();
-            if (tracks) {
-                let changeHandler = ::this.handleVideoTracksChange;
-
-                tracks.addEventListener('change', changeHandler);
-                this.on('dispose', function () {
-                    tracks.removeEventListener('change', changeHandler);
-                });
-
-            }
-        } catch (e) {
-            videojs.log('get player videoTracks fail' + e);
         }
 
         this.update();
@@ -139,33 +110,6 @@ class Chromecast extends Tech {
         return this.apiMedia.media.contentId;
     }
 
-    handleAudioTracksChange () {
-        let trackInfo = [];
-        let tTracks = this.textTracks();
-        let tracks = this.audioTracks();
-
-        if (!tracks) {
-            return;
-        }
-
-        for (let i = 0; i < tracks.length; i++) {
-            let track = tracks[i];
-            if (track['enabled']) {
-                //set id of cuurentTrack audio
-                trackInfo.push((i + 1) + tTracks.length);
-            }
-        }
-
-        if (this.apiMedia && trackInfo.length) {
-            this.tracksInfoRequest = new chrome.cast.media.EditTracksInfoRequest(trackInfo);
-            return this.apiMedia.editTracksInfo(this.tracksInfoRequest, ::this.onTrackSuccess, ::this.onTrackError);
-        }
-    }
-
-    handleVideoTracksChange () {
-
-    }
-
     handleTextTracksChange () {
         let trackInfo = [];
         let tracks = this.textTracks();
@@ -188,7 +132,6 @@ class Chromecast extends Tech {
     }
 
     onTrackSuccess () {
-        return videojs.log('track added');
     }
 
     onTrackError (e) {
@@ -245,7 +188,6 @@ class Chromecast extends Tech {
     }
 
     onSeekSuccess (position) {
-        videojs.log('seek success' + position);
     }
 
     volume () {
@@ -281,7 +223,6 @@ class Chromecast extends Tech {
     }
 
     mediaCommandSuccessCallback (information) {
-        videojs.log(information);
     }
 
     muted () {
@@ -296,7 +237,6 @@ class Chromecast extends Tech {
         return false;
     }
 
-
     resetSrc_ (callback) {
         callback();
     }
@@ -306,6 +246,9 @@ class Chromecast extends Tech {
         super.dispose(this);
     }
 
+    readyState () {
+        return 4;
+    }
 }
 
 Chromecast.prototype.paused_ = false;

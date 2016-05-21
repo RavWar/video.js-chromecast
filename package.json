@@ -2,7 +2,7 @@
   "name": "videojs-chromecast",
   "version": "2.0.0",
   "description": "Chromecast plugin for videojs",
-  "main": "es5/js/plugin.js",
+  "main": "es5/js/videojs-chromecast.js",
   "scripts": {
     "prebuild": "npm run clean",
     "build": "npm-run-all -p build:*",
@@ -35,7 +35,7 @@
     "version": "./scripts/npm-version-for-bower.sh",
     "postversion": "./scripts/npm-postversion-for-bower.sh",
     "watch": "npm run mkdirs && npm-run-all -p watch:*",
-    "watch:js": "watchify src/js/plugin.js -t babelify -v -o dist/videojs-chromecast.js",
+    "watch:js": "watchify src/js/videojs-chromecast.js -t babelify -v -o dist/videojs-chromecast.js",
     "watch:css": "nodemon -e scss -x \"npm run build:css\"",
     "watch:test": "watchify `find test -name '*.test.js'` -t babelify -o dist-test/videojs-chromecast.js"
   },
@@ -44,11 +44,11 @@
     "videojs",
     "videojs-plugin"
   ],
-  "author": "Benjipott, Inc.",
+  "author": "https://github.com/RavWar/video.js-chromecast",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/benjipott/video.js-chromecast"
+    "url": "https://github.com/RavWar/video.js-chromecast"
   },
   "files": [
     "CONTRIBUTING.md",

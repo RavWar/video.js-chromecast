@@ -55,44 +55,13 @@ var Chromecast = (function (_Tech) {
                 var changeHandler = _this.handleTextTracksChange.bind(_this);
 
                 tracks.addEventListener('change', changeHandler);
+                _this.one('ready', changeHandler);
                 _this.on('dispose', function () {
                     tracks.removeEventListener('change', changeHandler);
                 });
 
                 _this.handleTextTracksChange();
             })();
-        }
-
-        try {
-            tracks = this.audioTracks();
-            if (tracks) {
-                (function () {
-                    var changeHandler = _this.handleAudioTracksChange.bind(_this);
-
-                    tracks.addEventListener('change', changeHandler);
-                    _this.on('dispose', function () {
-                        tracks.removeEventListener('change', changeHandler);
-                    });
-                })();
-            }
-        } catch (e) {
-            _videoJs2['default'].log('get player audioTracks fail' + e);
-        }
-
-        try {
-            tracks = this.videoTracks();
-            if (tracks) {
-                (function () {
-                    var changeHandler = _this.handleVideoTracksChange.bind(_this);
-
-                    tracks.addEventListener('change', changeHandler);
-                    _this.on('dispose', function () {
-                        tracks.removeEventListener('change', changeHandler);
-                    });
-                })();
-            }
-        } catch (e) {
-            _videoJs2['default'].log('get player videoTracks fail' + e);
         }
 
         this.update();
@@ -174,33 +143,6 @@ var Chromecast = (function (_Tech) {
             return this.apiMedia.media.contentId;
         }
     }, {
-        key: 'handleAudioTracksChange',
-        value: function handleAudioTracksChange() {
-            var trackInfo = [];
-            var tTracks = this.textTracks();
-            var tracks = this.audioTracks();
-
-            if (!tracks) {
-                return;
-            }
-
-            for (var i = 0; i < tracks.length; i++) {
-                var track = tracks[i];
-                if (track['enabled']) {
-                    //set id of cuurentTrack audio
-                    trackInfo.push(i + 1 + tTracks.length);
-                }
-            }
-
-            if (this.apiMedia && trackInfo.length) {
-                this.tracksInfoRequest = new chrome.cast.media.EditTracksInfoRequest(trackInfo);
-                return this.apiMedia.editTracksInfo(this.tracksInfoRequest, this.onTrackSuccess.bind(this), this.onTrackError.bind(this));
-            }
-        }
-    }, {
-        key: 'handleVideoTracksChange',
-        value: function handleVideoTracksChange() {}
-    }, {
         key: 'handleTextTracksChange',
         value: function handleTextTracksChange() {
             var trackInfo = [];
@@ -224,9 +166,7 @@ var Chromecast = (function (_Tech) {
         }
     }, {
         key: 'onTrackSuccess',
-        value: function onTrackSuccess() {
-            return _videoJs2['default'].log('track added');
-        }
+        value: function onTrackSuccess() {}
     }, {
         key: 'onTrackError',
         value: function onTrackError(e) {
@@ -289,9 +229,7 @@ var Chromecast = (function (_Tech) {
         }
     }, {
         key: 'onSeekSuccess',
-        value: function onSeekSuccess(position) {
-            _videoJs2['default'].log('seek success' + position);
-        }
+        value: function onSeekSuccess(position) {}
     }, {
         key: 'volume',
         value: function volume() {
@@ -332,9 +270,7 @@ var Chromecast = (function (_Tech) {
         }
     }, {
         key: 'mediaCommandSuccessCallback',
-        value: function mediaCommandSuccessCallback(information) {
-            _videoJs2['default'].log(information);
-        }
+        value: function mediaCommandSuccessCallback(information) {}
     }, {
         key: 'muted',
         value: function muted() {
@@ -360,6 +296,11 @@ var Chromecast = (function (_Tech) {
         value: function dispose() {
             this.resetSrc_(Function.prototype);
             _get(Object.getPrototypeOf(Chromecast.prototype), 'dispose', this).call(this, this);
+        }
+    }, {
+        key: 'readyState',
+        value: function readyState() {
+            return 4;
         }
     }]);
 
